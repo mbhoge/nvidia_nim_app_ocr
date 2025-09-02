@@ -1,0 +1,30 @@
+# Example values file for deploying NVIDIA NIM services via Helm
+# Replace with real chart names/values as appropriate.
+
+namespace: nim
+
+proxy:
+  image: ghcr.io/example/nim-proxy:latest
+  service:
+    type: ClusterIP
+    port: 8000
+
+ocr:
+  image: ghcr.io/example/nim-ocr:latest
+
+llm:
+  image: ghcr.io/example/nim-llm:latest
+
+prometheus:
+  enabled: true
+  service:
+    type: ClusterIP
+    port: 9090
+
+grafana:
+  enabled: true
+  service:
+    type: ClusterIP
+    port: 3000
+
+

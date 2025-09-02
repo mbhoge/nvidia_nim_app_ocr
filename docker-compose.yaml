@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    image: nim-app:latest
+    environment:
+      - CONFIG_PATH=/app/config.yaml
+      - NIM_HOST=http://mock-nim:8000
+      - WEB_SERVER=1
+      - APP_PORT=9000
+    volumes:
+      - ./app/config.yaml:/app/config.yaml:ro
+      - ./app:/app
+    depends_on:
+      - mock-nim
+    networks:
+      - nim-net
+    ports:
+      - "9000:9000"
+    command: ["python", "/app/main.py"]
+
+  # Local mock NIM implementing /v1/infer and /v1/chat/completions
+  mock-nim:
+    build: ./mock_nim
+    image: mock-nim:latest
+    ports:
+      - "8000:8000"
+    networks:
+      - nim-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./monitoring/prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - nim-net
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    networks:
+      - nim-net
+    depends_on:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+networks:
+  nim-net: {}
+
+

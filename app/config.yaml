@@ -1,0 +1,8 @@
+nim_host: "http://localhost:8000"
+chat_model: "meta-llama3-8b-instruct"
+timeouts_seconds: 60
+
+# Thresholds and knobs
+confidence_threshold: 0.5
+
+

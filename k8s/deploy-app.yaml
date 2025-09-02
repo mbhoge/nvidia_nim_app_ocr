@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nim
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nim-app-config
+  namespace: nim
+data:
+  config.yaml: |
+    nim_host: "http://nim-proxy.nim.svc.cluster.local:8000"
+    chat_model: "meta-llama3-8b-instruct"
+    timeouts_seconds: 60
+    confidence_threshold: 0.5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nim-app
+  namespace: nim
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nim-app
+  template:
+    metadata:
+      labels:
+        app: nim-app
+    spec:
+      containers:
+        - name: nim-app
+          image: nim-app:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CONFIG_PATH
+              value: /app/config/config.yaml
+          volumeMounts:
+            - name: app-config
+              mountPath: /app/config
+          ports:
+            - containerPort: 9000
+      volumes:
+        - name: app-config
+          configMap:
+            name: nim-app-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nim-app
+  namespace: nim
+spec:
+  selector:
+    app: nim-app
+  ports:
+    - name: http
+      port: 9000
+      targetPort: 9000
+
+
