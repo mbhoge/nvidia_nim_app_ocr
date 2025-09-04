@@ -18,51 +18,43 @@ REQUESTS_COUNTER = Counter("nim_app_requests_total", "Total HTTP requests", ["en
 
 
 def load_image_as_data_url(path_or_url: str) -> str:
-    # If it's an HTTP URL, download and convert to data URL
-    if path_or_url.startswith("http://") or path_or_url.startswith("https://"):
-        response = requests.get(path_or_url, timeout=30)
-        response.raise_for_status()
-        content_type = response.headers.get("Content-Type", "image/png")
-        img64 = base64.b64encode(response.content).decode("utf-8")
-        return f"data:{content_type};base64,{img64}"
+    # Read JPG/JPEG from the local app directory only
+    app_dir = Path(os.path.dirname(__file__))
+    requested_path = Path(path_or_url)
 
-    # If it's a local file, read it
-    file_path = Path(path_or_url)
-    if file_path.exists():
-        with open(file_path, "rb") as file_handle:
-            img64 = base64.b64encode(file_handle.read()).decode("utf-8")
-        # Best-effort content type based on extension
-        ext = file_path.suffix.lower()
-        content_type = "image/png" if ext not in {".jpg", ".jpeg"} else "image/jpeg"
-        return f"data:{content_type};base64,{img64}"
+    # Normalize to file name within app folder to avoid path traversal
+    file_name = requested_path.name
 
-    # Fallback: download a demo customer-care image from the internet
-    demo_urls = [
-        # Public domain / permissive sample images; adjust as needed
-        "https://upload.wikimedia.org/wikipedia/commons/5/55/Customer_Service.jpg",
-        "https://upload.wikimedia.org/wikipedia/commons/1/1a/Customer_service_representative.jpg",
-    ]
-    last_error: Exception | None = None
-    for url in demo_urls:
-        try:
-            response = requests.get(url, timeout=30)
-            response.raise_for_status()
-            content_type = response.headers.get("Content-Type", "image/jpeg")
-            img64 = base64.b64encode(response.content).decode("utf-8")
-            return f"data:{content_type};base64,{img64}"
-        except Exception as exc:  # noqa: BLE001
-            last_error = exc
-            continue
-    raise FileNotFoundError(f"Could not load image from '{path_or_url}' and demo download failed: {last_error}")
+    # Ensure JPG/JPEG extension
+    if not file_name.lower().endswith((".jpg", ".jpeg")):
+        file_name = f"{file_name}.jpg"
+
+    file_path = app_dir / file_name
+
+    if not file_path.exists():
+        raise FileNotFoundError(f"Could not load image from '{file_path}'. File does not exist.")
+
+    with open(file_path, "rb") as file_handle:
+        img64 = base64.b64encode(file_handle.read()).decode("utf-8")
+    # Best-effort content type based on extension
+    ext = file_path.suffix.lower()
+    content_type = "image/jpeg" if ext not in {".jpg", ".jpeg"} else "image/jpeg"
+    return f"data:{content_type};base64,{img64}"
 
 
 def run_pipeline() -> str:
     config_path = os.environ.get("CONFIG_PATH", "/app/config.yaml")
     client = NimClient.from_config(config_path)
 
-    sample_image = os.environ.get("SAMPLE_IMAGE", "sample_scan.png")
-    image_data_url = load_image_as_data_url(sample_image)
-
+    sample_image = os.environ.get("SAMPLE_IMAGE", "distroyed.jpg")
+    # Ensure a JPG extension; default to .jpg if none provided
+    if not sample_image.lower().endswith((".jpg", ".jpeg")):
+        sample_image = f"{sample_image}.jpg"
+    # Ensure we're looking in the app folder
+    image_path = os.path.join(os.path.dirname(__file__), sample_image)
+    print("image_path =)", image_path)
+    image_data_url = load_image_as_data_url(image_path)
+    # print("image_data_url =)", image_data_url)
     # 1) OCR request
     ocr_payload = {"input": [{"type": "image_url", "url": image_data_url}]}
     ocr_result = client.post_infer(ocr_payload)
@@ -72,6 +64,9 @@ def run_pipeline() -> str:
         detections = ocr_result["data"][0]["text_detections"]
         for detection in detections:
             text_lines.append(detection["text_prediction"]["text"]) 
+
+        print("text_lines =)", text_lines)
+        print("ocr_result =)", ocr_result)
     except Exception:
         # Provide context on failure without crashing
         print("Unexpected OCR response format:")
@@ -79,7 +74,7 @@ def run_pipeline() -> str:
 
     # 2) LLM chat-completions
     clinical_context = (
-        "Patient reports cough and fever. Lab results show high WBC."
+        "Patient reports shortness of breath. Lab results show lung function impairment."
     )
     messages: List[Dict[str, Any]] = [
         {"role": "system", "content": "You are a medical assistant."},
