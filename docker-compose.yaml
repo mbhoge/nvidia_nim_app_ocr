@@ -6,7 +6,7 @@ services:
     image: nim-app:latest
     environment:
       - CONFIG_PATH=/app/config.yaml
-      - NIM_HOST=http://nemoretriever-ocr-v1:8000
+      - NIM_HOST=http://mock-nim:8000
       - WEB_SERVER=1
       - APP_PORT=9000
       - NGC_API_KEY=${NGC_API_KEY}
@@ -26,7 +26,7 @@ services:
     build: ./mock_nim
     image: mock-nim:latest
     ports:
-      - "8000:8000"
+      - "8001:8000"
     networks:
       - nim-net
 
@@ -55,6 +55,7 @@ services:
 
   nemoretriever-ocr-v1:
     image: nvcr.io/nvidia/nemo-microservices/nemoretriever-ocr-v1:1.0.0
+
     gpus: all
     environment:
       - NGC_API_KEY=${NGC_API_KEY}
