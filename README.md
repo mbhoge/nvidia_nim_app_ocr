@@ -1,3 +1,5 @@
+# nvidia_nim_app_ocr
+
 ## NIM App Scaffold
 
 This project scaffolds a Python app that calls NVIDIA NIM OCR and LLM microservices, with Docker, docker-compose, Kubernetes manifests, Prometheus, and Grafana.
@@ -68,5 +70,3 @@ pytest -q
 
 - Replace placeholder NIM images and proxy with your actual NIM services.
 - Consider adding auth (API keys) and TLS per your deployment.
-
-
